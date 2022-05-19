@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2015 - 2020
+*  (C) COPYRIGHT AUTHORS, 2015 - 2022
 *
 *  TITLE:       HYBRIDS.H
 *
-*  VERSION:     3.53
+*  VERSION:     3.60
 *
-*  DATE:        07 Nov 2020
+*  DATE:        27 Apr 2022
 *
 *  Prototypes and definitions for hybrid methods.
 *
@@ -38,10 +38,6 @@ NTSTATUS ucmUiAccessMethod(
     _In_ PVOID ProxyDll,
     _In_ DWORD ProxyDllSize);
 
-NTSTATUS ucmJunctionMethod(
-    _In_ PVOID ProxyDll,
-    _In_ DWORD ProxyDllSize);
-
 NTSTATUS ucmSXSDccwMethod(
     _In_ PVOID ProxyDll,
     _In_ DWORD ProxyDllSize);
@@ -53,11 +49,22 @@ NTSTATUS ucmCorProfilerMethod(
 NTSTATUS ucmDccwCOMMethod(
     _In_ LPWSTR lpszPayload);
 
+NTSTATUS ucmJunctionMethod(
+    _In_ PVOID ProxyDll,
+    _In_ DWORD ProxyDllSize);
+
+NTSTATUS ucmMsdtMethod(
+    _In_ PVOID ProxyDll,
+    _In_ DWORD ProxyDllSize);
+
+NTSTATUS ucmDotNetSerialMethod(
+    _In_ LPWSTR lpszPayload);
+
 //
 // Post execution cleanup routines.
 //
 BOOL ucmMethodCleanupSingleItemSystem32(
-    LPWSTR lpItemName);
+    LPCWSTR lpItemName);
 
 BOOL ucmJunctionMethodCleanup(
     VOID);
@@ -68,3 +75,5 @@ BOOL ucmSXSDccwMethodCleanup(
 BOOL ucmSXSMethodCleanup(
     VOID);
 
+VOID ucmDismMethodCleanup(
+    VOID);

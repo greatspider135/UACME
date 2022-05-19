@@ -1,12 +1,12 @@
 /*******************************************************************************
 *
-*  (C) COPYRIGHT AUTHORS, 2014 - 2020
+*  (C) COPYRIGHT AUTHORS, 2014 - 2021
 *
 *  TITLE:       SUP.C
 *
-*  VERSION:     1.49
+*  VERSION:     1.52
 *
-*  DATE:        11 Nov 2020
+*  DATE:        23 Nov 2021
 *
 * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 * ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -26,21 +26,15 @@
 */
 BOOL supIsCorImageFile(
     _In_ PVOID ImageBase
-    )
+)
 {
-    BOOL                bResult = FALSE;
     ULONG               sz = 0;
-    IMAGE_COR20_HEADER *CliHeader;
+    IMAGE_COR20_HEADER* CliHeader;
 
-    if (ImageBase) {
-        CliHeader = (IMAGE_COR20_HEADER*)RtlImageDirectoryEntryToData(ImageBase, TRUE,
-            IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR, &sz);
+    CliHeader = (IMAGE_COR20_HEADER*)RtlImageDirectoryEntryToData(ImageBase, TRUE,
+        IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR, &sz);
 
-        if ((CliHeader == NULL) || (sz < sizeof(IMAGE_COR20_HEADER)))
-            return bResult;
-        bResult = TRUE;
-    }
-    return bResult;
+    return ((CliHeader != NULL) && (sz >= sizeof(IMAGE_COR20_HEADER)));
 }
 
 /*
@@ -66,12 +60,12 @@ LPWSTR supReadKeyString(
     lRet = RegQueryValueEx(hKey, KeyValue, NULL,
         NULL, NULL, pdwDataSize);
     if (lRet == ERROR_SUCCESS) {
-        lpString = (LPWSTR)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, *pdwDataSize);
+        lpString = (LPWSTR)supHeapAlloc(*pdwDataSize);
         if (lpString != NULL) {
             lRet = RegQueryValueEx(hKey, KeyValue, NULL,
                 NULL, (LPBYTE)lpString, pdwDataSize);
             if (lRet != ERROR_SUCCESS) {
-                HeapFree(GetProcessHeap(), 0, lpString);
+                supHeapFree(lpString);
                 lpString = NULL;
             }
         }
@@ -103,13 +97,13 @@ PVOID supQueryKeyName(
         *ReturnedLength = 0;
 
     NtQueryObject(hKey, ObjectNameInformation, NULL, 0, &ulen);
-    pObjName = (POBJECT_NAME_INFORMATION)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ulen);
+    pObjName = (POBJECT_NAME_INFORMATION)supHeapAlloc(ulen);
     if (pObjName) {
         status = NtQueryObject(hKey, ObjectNameInformation, pObjName, ulen, NULL);
         if (NT_SUCCESS(status)) {
             if ((pObjName->Name.Buffer != NULL) && (pObjName->Name.Length > 0)) {
                 sz = pObjName->Name.Length + sizeof(UNICODE_NULL);
-                ReturnBuffer = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sz);
+                ReturnBuffer = supHeapAlloc(sz);
                 if (ReturnBuffer) {
                     RtlCopyMemory(ReturnBuffer, pObjName->Name.Buffer, pObjName->Name.Length);
                     if (ReturnedLength)
@@ -117,7 +111,7 @@ PVOID supQueryKeyName(
                 }
             }
         }
-        HeapFree(GetProcessHeap(), 0, pObjName);
+        supHeapFree(pObjName);
     }
     return ReturnBuffer;
 }
@@ -288,4 +282,61 @@ PVOID supLookupImageSectionByName(
         *SectionSize = SectionTableEntry->Misc.VirtualSize;
 
     return Section;
+}
+
+/*
+* supConcatenatePaths
+*
+* Purpose:
+*
+* Concatenate 2 paths.
+*
+*/
+BOOL supConcatenatePaths(
+    _Inout_ LPWSTR Target,
+    _In_ LPCWSTR Path,
+    _In_ SIZE_T TargetBufferSize
+)
+{
+    SIZE_T TargetLength, PathLength;
+    BOOL TrailingBackslash, LeadingBackslash;
+    SIZE_T EndingLength;
+
+    TargetLength = _strlen(Target);
+    PathLength = _strlen(Path);
+
+    if (TargetLength && (*CharPrev(Target, Target + TargetLength) == TEXT('\\'))) {
+        TrailingBackslash = TRUE;
+        TargetLength--;
+    }
+    else {
+        TrailingBackslash = FALSE;
+    }
+
+    if (Path[0] == TEXT('\\')) {
+        LeadingBackslash = TRUE;
+        PathLength--;
+    }
+    else {
+        LeadingBackslash = FALSE;
+    }
+
+    EndingLength = TargetLength + PathLength + 2;
+
+    if (!LeadingBackslash && (TargetLength < TargetBufferSize)) {
+        Target[TargetLength++] = TEXT('\\');
+    }
+
+    if (TargetBufferSize > TargetLength) {
+        _strncpy(Target + TargetLength,
+            TargetBufferSize - TargetLength,
+            Path,
+            TargetBufferSize - TargetLength);
+    }
+
+    if (TargetBufferSize) {
+        Target[TargetBufferSize - 1] = 0;
+    }
+
+    return (EndingLength <= TargetBufferSize);
 }
